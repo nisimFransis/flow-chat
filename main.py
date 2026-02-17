@@ -8,7 +8,6 @@ import uvicorn
 
 app = FastAPI()
 
-# הגדרת CORS כדי שהדפדפן לא יחסום בקשות
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,7 +15,6 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# פונקציה לעבודה מול ה-Database
 def get_db():
     conn = sqlite3.connect("flow_chat.db")
     conn.row_factory = sqlite3.Row
@@ -25,47 +23,56 @@ def get_db():
 def init_db():
     conn = get_db()
     cursor = conn.cursor()
-    # יצירת הטבלאות הבסיסיות אם הן לא קיימות
-    cursor.execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, status TEXT DEFAULT 'idle')")
-    cursor.execute("CREATE TABLE IF NOT EXISTS messages (room_id TEXT, user TEXT, text TEXT)")
-    cursor.execute("CREATE TABLE IF NOT EXISTS rooms (id TEXT PRIMARY KEY, u1 TEXT, u2 TEXT, board TEXT DEFAULT '.........', turn TEXT DEFAULT 'X')")
-    
-    # בדיקה והוספת עמודת last_seen למשתמשים
-    try:
-        cursor.execute("ALTER TABLE users ADD COLUMN last_seen REAL")
-        print("✅ Added last_seen column")
-    except sqlite3.OperationalError:
-        print("ℹ️ last_seen column already exists")
+    # יצירת טבלאות עם כל העמודות מההתחלה
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY, 
+            status TEXT DEFAULT 'idle', 
+            last_seen REAL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            room_id TEXT, 
+            user TEXT, 
+            text TEXT
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS rooms (
+            id TEXT PRIMARY KEY, 
+            u1 TEXT, 
+            u2 TEXT, 
+            board TEXT DEFAULT '.........', 
+            turn TEXT DEFAULT 'X', 
+            last_activity REAL
+        )
+    """)
+    conn.commit()
+    conn.close()
 
-    # בדיקה והוספת עמודת last_activity לחדרים
-    try:
-        cursor.execute("ALTER TABLE rooms ADD COLUMN last_activity REAL")
-        print("✅ Added last_activity column")
-    except sqlite3.OperationalError:
-        print("ℹ️ last_activity column already exists")
-        
-    conn.commit()
-    conn.close()
-    
-# --- פונקציית ניקוי וסטטיסטיקה ---
+# הרצה של היצירה מיד עם עליית השרת
+init_db()
+
 def cleanup_and_stats():
-    conn = get_db()
-    cursor = conn.cursor()
-    now = time.time()
-    ten_minutes_ago = now - 600
-    five_minutes_ago = now - 300
-    
-    # ניקוי חדרים והודעות ישנות
-    cursor.execute("DELETE FROM messages WHERE room_id IN (SELECT id FROM rooms WHERE last_activity < ?)", (ten_minutes_ago,))
-    cursor.execute("DELETE FROM rooms WHERE last_activity < ?", (ten_minutes_ago,))
-    
-    # ספירת משתמשים פעילים (כאלה שביצעו פעולה ב-5 הדקות האחרונות)
-    cursor.execute("SELECT COUNT(*) FROM users WHERE last_seen > ?", (five_minutes_ago,))
-    active_count = cursor.fetchone()[0]
-    
-    conn.commit()
-    conn.close()
-    return active_count
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        now = time.time()
+        
+        # מחיקת ישנים (רק אם הטבלה קיימת)
+        cursor.execute("DELETE FROM messages WHERE room_id IN (SELECT id FROM rooms WHERE last_activity < ?)", (now - 600,))
+        cursor.execute("DELETE FROM rooms WHERE last_activity < ?", (now - 600,))
+        
+        cursor.execute("SELECT COUNT(*) FROM users WHERE last_seen > ?", (now - 300,))
+        res = cursor.fetchone()
+        count = res[0] if res else 0
+        
+        conn.commit()
+        conn.close()
+        return count
+    except:
+        return 0
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -81,17 +88,13 @@ async def get_stats():
 async def login(request: Request, data: dict = Body(...)):
     user = data.get('username')
     client_ip = request.client.host
-    
-    # רישום דאטה על הכניסה ללוגים של Render
-    print(f"🚀 NEW LOGIN: User '{user}' joined from IP {client_ip} at {time.ctime()}")
+    print(f"🚀 LOGIN: {user} from {client_ip}")
     
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("INSERT OR REPLACE INTO users (username, status, last_seen) VALUES (?, 'idle', ?)", (user, time.time()))
     conn.commit()
     conn.close()
-    
-    cleanup_and_stats()
     return {"status": "success"}
 
 @app.get("/api/match/{username}")
@@ -99,10 +102,9 @@ async def find_match(username: str):
     conn = get_db()
     cursor = conn.cursor()
     
-    # עדכון שהמשתמש עדיין כאן
+    # עדכון זמן נראה לאחרונה
     cursor.execute("UPDATE users SET last_seen = ? WHERE username = ?", (time.time(), username))
     
-    # חיפוש חדר קיים
     cursor.execute("SELECT id, u1, u2 FROM rooms WHERE u1 = ? OR u2 = ?", (username, username))
     room = cursor.fetchone()
     if room:
@@ -110,7 +112,6 @@ async def find_match(username: str):
         conn.close()
         return {"room_id": room['id'], "partner": partner}
 
-    # חיפוש פרטנר פנוי
     cursor.execute("SELECT username FROM users WHERE status = 'idle' AND username != ? LIMIT 1", (username,))
     match = cursor.fetchone()
     if match:
@@ -141,9 +142,8 @@ async def make_move(room_id: str, data: dict = Body(...)):
     conn = get_db()
     cursor = conn.cursor()
     next_turn = "O" if data['char'] == "X" else "X"
-    # כאן השורה תוקנה כדי שלא תהיה שגיאת מחרוזת
-    query = "UPDATE rooms SET board = ?, turn = ?, last_activity = ? WHERE id = ?"
-    cursor.execute(query, (data['board'], next_turn, time.time(), room_id))
+    cursor.execute("UPDATE rooms SET board = ?, turn = ?, last_activity = ? WHERE id = ?", 
+                   (data['board'], next_turn, time.time(), room_id))
     conn.commit()
     conn.close()
     return {"status": "ok"}
