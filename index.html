@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Flow Chat & Game</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; }
+        #login, #chat-container { width: 90%; max-width: 400px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-top: 20px; }
+        .hidden { display: none; }
+        #messages { height: 200px; overflow-y: auto; border: 1px solid #ddd; margin: 10px 0; padding: 5px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 20px; }
+        .cell { width: 100px; height: 100px; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-size: 2em; cursor: pointer; background: #fff; }
+        #status { color: blue; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="login">
+        <h2>ברוכים הבאים ל-Flow</h2>
+        <input type="text" id="username" placeholder="הכנס שם משתמש...">
+        <button onclick="startSearch()">חפש צ'אט</button>
+    </div>
+
+    <div id="chat-container" class="hidden">
+        <div id="status">מחובר אל: <span id="partner-name"></span></div>
+        <div id="messages"></div>
+        <input type="text" id="msg-input" placeholder="כתוב הודעה...">
+        <button onclick="sendMessage()">שלח</button>
+
+        <div class="grid" id="board">
+            <div class="cell" onclick="handleMove(0)"></div>
+            <div class="cell" onclick="handleMove(1)"></div>
+            <div class="cell" onclick="handleMove(2)"></div>
+            <div class="cell" onclick="handleMove(3)"></div>
+            <div class="cell" onclick="handleMove(4)"></div>
+            <div class="cell" onclick="handleMove(5)"></div>
+            <div class="cell" onclick="handleMove(6)"></div>
+            <div class="cell" onclick="handleMove(7)"></div>
+            <div class="cell" onclick="handleMove(8)"></div>
+        </div>
+        <p id="turn-display">תור: X</p>
+    </div>
+
+    <script>
+        let myName = "";
+        let currentRoom = null;
+        let currentBoard = ".........";
+        let myChar = "X"; // הראשון בחדר הוא X
+
+        async function startSearch() {
+            myName = document.getElementById('username').value;
+            if(!myName) return alert("בחר שם");
+            
+            await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: myName}) });
+            document.getElementById('login').innerHTML = "מחפש התאמה...";
+
+            const interval = setInterval(async () => {
+                const res = await fetch(`/api/match/${myName}`);
+                const data = await res.json();
+                if(data.room_id) {
+                    currentRoom = data.room_id;
+                    document.getElementById('partner-name').innerText = data.partner;
+                    document.getElementById('login').classList.add('hidden');
+                    document.getElementById('chat-container').classList.remove('hidden');
+                    // אם אני ה-u2 בחדר (השני שנכנס), אני O
+                    if(data.room_id.startsWith(`room_${data.partner}`)) myChar = "O";
+                    clearInterval(interval);
+                    startPolling();
+                }
+            }, 2000);
+        }
+
+        function startPolling() {
+            setInterval(async () => {
+                // משיכת הודעות
+                const mRes = await fetch(`/api/chat/${currentRoom}`);
+                const msgs = await mRes.json();
+                document.getElementById('messages').innerHTML = msgs.map(m => `<div><b>${m.user}:</b> ${m.text}</div>`).join('');
+                
+                // משיכת מצב לוח
+                const gRes = await fetch(`/api/game/${currentRoom}`);
+                const gData = await gRes.json();
+                currentBoard = gData.board;
+                document.getElementById('turn-display').innerText = "תור: " + gData.turn;
+                updateUI();
+            }, 1000);
+        }
+
+        function updateUI() {
+            const cells = document.querySelectorAll('.cell');
+            currentBoard.split('').forEach((c, i) => {
+                cells[i].innerText = c === '.' ? '' : c;
+            });
+        }
+
+        async function handleMove(i) {
+            const gRes = await fetch(`/api/game/${currentRoom}`);
+            const gData = await gRes.json();
+            
+            if(gData.turn !== myChar || currentBoard[i] !== '.') return;
+
+            let arr = currentBoard.split('');
+            arr[i] = myChar;
+            const newBoard = arr.join('');
+
+            await fetch(`/api/game/${currentRoom}/move`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ board: newBoard, char: myChar })
+            });
+        }
+
+        async function sendMessage() {
+            const text = document.getElementById('msg-input').value;
+            await fetch(`/api/chat/${currentRoom}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ user: myName, text: text })
+            });
+            document.getElementById('msg-input').value = "";
+        }
+    </script>
+</body>
+</html>
