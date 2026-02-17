@@ -25,17 +25,28 @@ def get_db():
 def init_db():
     conn = get_db()
     cursor = conn.cursor()
-    # טבלת משתמשים עם זמן נראה לאחרונה
-    cursor.execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, status TEXT DEFAULT 'idle', last_seen REAL)")
-    # טבלת הודעות
+    # יצירת הטבלאות הבסיסיות אם הן לא קיימות
+    cursor.execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, status TEXT DEFAULT 'idle')")
     cursor.execute("CREATE TABLE IF NOT EXISTS messages (room_id TEXT, user TEXT, text TEXT)")
-    # טבלת חדרים עם זמן פעילות אחרון
-    cursor.execute("CREATE TABLE IF NOT EXISTS rooms (id TEXT PRIMARY KEY, u1 TEXT, u2 TEXT, board TEXT DEFAULT '.........', turn TEXT DEFAULT 'X', last_activity REAL)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS rooms (id TEXT PRIMARY KEY, u1 TEXT, u2 TEXT, board TEXT DEFAULT '.........', turn TEXT DEFAULT 'X')")
+    
+    # בדיקה והוספת עמודת last_seen למשתמשים
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN last_seen REAL")
+        print("✅ Added last_seen column")
+    except sqlite3.OperationalError:
+        print("ℹ️ last_seen column already exists")
+
+    # בדיקה והוספת עמודת last_activity לחדרים
+    try:
+        cursor.execute("ALTER TABLE rooms ADD COLUMN last_activity REAL")
+        print("✅ Added last_activity column")
+    except sqlite3.OperationalError:
+        print("ℹ️ last_activity column already exists")
+        
     conn.commit()
     conn.close()
-
-init_db()
-
+    
 # --- פונקציית ניקוי וסטטיסטיקה ---
 def cleanup_and_stats():
     conn = get_db()
