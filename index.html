@@ -3,66 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flow | Chat & Game</title>
+    <title>Flow | Chat</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap');
         body { font-family: 'Heebo', sans-serif; background: #0f172a; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .cell { transition: all 0.2s; background: #334155; }
-        .cell:hover { background: #475569; transform: scale(1.02); }
-        #messages::-webkit-scrollbar { width: 5px; }
+        #messages::-webkit-scrollbar { width: 6px; }
         #messages::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
     </style>
 </head>
-<body class="text-slate-100 min-h-screen flex flex-col items-center p-4">
+<body class="text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
 
-    <div id="login" class="glass w-full max-w-md p-8 rounded-3xl shadow-2xl mt-10">
-        <h1 class="text-5xl font-bold text-center mb-2 text-indigo-500">Flow.</h1>
-        <p class="text-center text-slate-400 mb-8 text-sm text-balance">צ'אט אנונימי ומשחק איקס-עיגול בזמן אמת</p>
+    <div id="login" class="glass w-full max-w-md p-8 rounded-3xl shadow-2xl">
+        <h1 class="text-6xl font-black text-center mb-2 text-indigo-500 tracking-tighter">Flow.</h1>
+        <p class="text-center text-slate-400 mb-8 text-sm">צ'אט אנונימי מהיר ללא הרשמה</p>
         
         <div class="space-y-4">
             <input type="text" id="username" placeholder="איך לקרוא לך?" 
-                class="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 outline-none transition-all">
+                class="w-full p-4 rounded-2xl bg-slate-900 border border-slate-700 focus:border-indigo-500 outline-none transition-all text-center text-lg">
             <button onclick="startSearch()" 
-                class="w-full p-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-lg shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
-                חפש שותף לשיחה
+                class="w-full p-4 bg-indigo-600 hover:bg-indigo-500 rounded-2xl font-bold text-xl shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
+                מצא שותף לשיחה
             </button>
         </div>
     </div>
 
-    <div id="chat-container" class="hidden glass w-full max-w-md p-6 rounded-3xl shadow-2xl mt-6">
-        <div class="flex items-center justify-between mb-4 border-b border-slate-700 pb-3">
-            <div class="flex items-center gap-2">
+    <div id="chat-container" class="hidden glass w-full max-w-2xl h-[80vh] flex flex-col p-6 rounded-3xl shadow-2xl">
+        <div class="flex items-center justify-between mb-4 border-b border-slate-700 pb-4">
+            <div class="flex items-center gap-3">
                 <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                <span class="font-bold text-indigo-400" id="partner-name"></span>
+                <span class="font-bold text-xl text-indigo-400" id="partner-name"></span>
             </div>
-            <span class="text-xs text-slate-500 uppercase tracking-widest">Live Chat</span>
+            <button onclick="location.reload()" class="text-xs bg-slate-800 hover:bg-red-900/40 px-3 py-1 rounded-full transition-all text-slate-400">נתק שיחה</button>
         </div>
 
-        <div id="messages" class="h-48 overflow-y-auto mb-4 flex flex-col gap-2 p-2"></div>
+        <div id="messages" class="flex-1 overflow-y-auto mb-4 flex flex-col gap-3 p-2"></div>
 
-        <div class="flex gap-2 mb-8">
-            <input type="text" id="msg-input" placeholder="כתוב הודעה..." class="flex-1 p-3 rounded-xl bg-slate-900 border border-slate-700 outline-none">
-            <button onclick="sendMessage()" class="px-5 bg-indigo-600 rounded-xl font-bold hover:bg-indigo-500 transition-all">שלח</button>
+        <div class="flex gap-3 bg-slate-900/50 p-2 rounded-2xl border border-slate-700">
+            <input type="text" id="msg-input" placeholder="כתוב הודעה שנונה..." 
+                class="flex-1 p-3 bg-transparent outline-none text-lg"
+                onkeypress="if(event.key === 'Enter') sendMessage()">
+            <button onclick="sendMessage()" class="bg-indigo-600 p-3 px-6 rounded-xl font-bold hover:bg-indigo-500 transition-all">שלח</button>
         </div>
-
-        <div class="grid grid-cols-3 gap-3 mb-4">
-            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(0)"></div>
-            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(1)"></div>
-            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(2)"></div>
-            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(3)"></div>
-            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(4)"></div>
-            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(5)"></div>
-            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(6)"></div>
-            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(7)"></div>
-            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(8)"></div>
-        </div>
-        <p id="turn-display" class="text-center font-bold text-indigo-400 text-lg uppercase">תור השחקן: X</p>
     </div>
 
     <script>
-        let myName = "", currentRoom = null, myChar = "X", currentBoard = ".........";
+        let myName = "", currentRoom = null;
 
         async function startSearch() {
             myName = document.getElementById('username').value;
@@ -70,9 +57,9 @@
             
             document.getElementById('login').innerHTML = `
                 <div class="flex flex-col items-center py-10">
-                    <div class="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                    <h3 class="text-xl font-bold">מחפש מישהו לדבר איתו...</h3>
-                    <p class="text-slate-400 text-sm mt-2 text-center text-balance italic px-4">"הדברים הכי טובים קורים כשלא מצפים להם"</p>
+                    <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-6"></div>
+                    <h3 class="text-2xl font-bold">מחפש שותף...</h3>
+                    <p class="text-slate-400 mt-2">מיד תחובר למישהו אקראי</p>
                 </div>`;
 
             await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: myName}) });
@@ -85,7 +72,6 @@
                     document.getElementById('partner-name').innerText = data.partner;
                     document.getElementById('login').classList.add('hidden');
                     document.getElementById('chat-container').classList.remove('hidden');
-                    if(currentRoom.startsWith(`room_${data.partner}`)) myChar = "O";
                     clearInterval(interval);
                     startPolling();
                 }
@@ -94,58 +80,32 @@
 
         function startPolling() {
             setInterval(async () => {
-                const [mRes, gRes] = await Promise.all([
-                    fetch(`/api/chat/${currentRoom}`),
-                    fetch(`/api/game/${currentRoom}`)
-                ]);
-                const msgs = await mRes.json();
-                const gData = await gRes.json();
+                const res = await fetch(`/api/chat/${currentRoom}`);
+                const msgs = await res.json();
 
                 const msgDiv = document.getElementById('messages');
                 msgDiv.innerHTML = msgs.map(m => `
                     <div class="flex ${m.user === myName ? 'justify-start' : 'justify-end'}">
-                        <div class="max-w-[80%] px-4 py-2 rounded-2xl ${m.user === myName ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-700 text-slate-200 rounded-tl-none'}">
-                            <p class="text-[10px] opacity-50 mb-1">${m.user}</p>
-                            <p class="text-sm">${m.text}</p>
+                        <div class="max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${m.user === myName ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-700 text-slate-100 rounded-tl-none'}">
+                            <p class="text-[10px] opacity-40 mb-1 font-bold">${m.user}</p>
+                            <p class="text-md leading-relaxed">${m.text}</p>
                         </div>
                     </div>
                 `).join('');
                 msgDiv.scrollTop = msgDiv.scrollHeight;
-
-                currentBoard = gData.board;
-                document.getElementById('turn-display').innerText = "תור השחקן: " + gData.turn;
-                
-                const cells = document.querySelectorAll('.cell');
-                currentBoard.split('').forEach((c, i) => {
-                    cells[i].innerText = c === '.' ? '' : c;
-                    cells[i].style.color = c === 'X' ? '#6366f1' : '#f43f5e';
-                });
             }, 1000);
-        }
-
-        async function handleMove(i) {
-            const gRes = await fetch(`/api/game/${currentRoom}`);
-            const gData = await gRes.json();
-            if(gData.turn !== myChar || currentBoard[i] !== '.') return;
-
-            let arr = currentBoard.split('');
-            arr[i] = myChar;
-            await fetch(`/api/game/${currentRoom}/move`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ board: arr.join(''), char: myChar })
-            });
         }
 
         async function sendMessage() {
             const input = document.getElementById('msg-input');
             if(!input.value) return;
+            const text = input.value;
+            input.value = ""; // ניקוי מהיר לחוויה טובה יותר
             await fetch(`/api/chat/${currentRoom}`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ user: myName, text: input.value })
+                body: JSON.stringify({ user: myName, text: text })
             });
-            input.value = "";
         }
     </script>
 </body>
