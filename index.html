@@ -4,102 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flow | Chat & Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* עיצוב מודרני - Dark Mode */
-        :root { 
-            --primary: #6366f1; 
-            --secondary: #ec4899;
-            --bg: #0f172a; 
-            --card: #1e293b; 
-            --text: #f8fafc; 
-        }
-
-        body { 
-            font-family: 'Segoe UI', system-ui, sans-serif; 
-            background: var(--bg); 
-            color: var(--text); 
-            display: flex; flex-direction: column; align-items: center; 
-            margin: 0; min-height: 100vh; padding: 20px;
-        }
-
-        #login, #chat-container { 
-            width: 100%; max-width: 400px; 
-            background: var(--card); 
-            padding: 30px; border-radius: 20px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        h1 { color: var(--primary); text-align: center; margin-bottom: 10px; }
-        p { text-align: center; opacity: 0.7; font-size: 0.9rem; }
-
-        input { 
-            width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #334155; 
-            background: #0f172a; color: white; margin-bottom: 15px; box-sizing: border-box; 
-            outline: none; transition: border 0.3s;
-        }
-        input:focus { border-color: var(--primary); }
-
-        button { 
-            width: 100%; padding: 12px; border-radius: 10px; border: none; 
-            background: var(--primary); color: white; font-weight: bold; 
-            cursor: pointer; transition: transform 0.2s, background 0.3s; 
-        }
-        button:hover { background: #4f46e5; transform: translateY(-2px); }
-
-        /* אזור הצ'אט */
-        #messages { 
-            height: 200px; overflow-y: auto; background: #0f172a; 
-            border-radius: 12px; padding: 10px; margin: 15px 0; 
-            display: flex; flex-direction: column; gap: 8px; 
-        }
-        .msg { padding: 8px 12px; border-radius: 12px; background: #334155; width: fit-content; max-width: 85%; font-size: 0.95rem; }
-        .msg.me { align-self: flex-end; background: var(--primary); }
-
-        /* לוח המשחק */
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
-        .cell { 
-            aspect-ratio: 1; background: #334155; border-radius: 12px; 
-            display: flex; align-items: center; justify-content: center; 
-            font-size: 2.2rem; font-weight: bold; cursor: pointer; 
-            transition: background 0.3s; 
-        }
-        .cell:hover { background: #475569; }
-        
-        #turn-display { text-align: center; color: var(--primary); font-weight: bold; margin-top: 15px; }
-        .hidden { display: none; }
-        #status { font-size: 0.9rem; margin-bottom: 10px; color: var(--primary); }
+        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap');
+        body { font-family: 'Heebo', sans-serif; background: #0f172a; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .cell { transition: all 0.2s; background: #334155; }
+        .cell:hover { background: #475569; transform: scale(1.02); }
+        #messages::-webkit-scrollbar { width: 5px; }
+        #messages::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
     </style>
 </head>
-<body>
+<body class="text-slate-100 min-h-screen flex flex-col items-center p-4">
 
-    <div id="login">
-        <h1>Flow.</h1>
-        <p>מצא שותף לצ'אט ומשחק איקס-עיגול</p>
-        <input type="text" id="username" placeholder="הכנס שם משתמש...">
-        <button onclick="startSearch()">חפש שותף</button>
+    <div id="login" class="glass w-full max-w-md p-8 rounded-3xl shadow-2xl mt-10">
+        <h1 class="text-5xl font-bold text-center mb-2 text-indigo-500">Flow.</h1>
+        <p class="text-center text-slate-400 mb-8 text-sm text-balance">צ'אט אנונימי ומשחק איקס-עיגול בזמן אמת</p>
+        
+        <div class="space-y-4">
+            <input type="text" id="username" placeholder="איך לקרוא לך?" 
+                class="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 outline-none transition-all">
+            <button onclick="startSearch()" 
+                class="w-full p-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-lg shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
+                חפש שותף לשיחה
+            </button>
+        </div>
     </div>
 
-    <div id="chat-container" class="hidden">
-        <div id="status">● מחובר אל: <span id="partner-name"></span></div>
-        <div id="messages"></div>
-        <div style="display:flex; gap:8px;">
-            <input type="text" id="msg-input" placeholder="כתוב משהו..." style="margin:0;">
-            <button onclick="sendMessage()" style="width:80px;">שלח</button>
+    <div id="chat-container" class="hidden glass w-full max-w-md p-6 rounded-3xl shadow-2xl mt-6">
+        <div class="flex items-center justify-between mb-4 border-b border-slate-700 pb-3">
+            <div class="flex items-center gap-2">
+                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <span class="font-bold text-indigo-400" id="partner-name"></span>
+            </div>
+            <span class="text-xs text-slate-500 uppercase tracking-widest">Live Chat</span>
         </div>
 
-        <div class="grid">
-            <div class="cell" onclick="handleMove(0)"></div>
-            <div class="cell" onclick="handleMove(1)"></div>
-            <div class="cell" onclick="handleMove(2)"></div>
-            <div class="cell" onclick="handleMove(3)"></div>
-            <div class="cell" onclick="handleMove(4)"></div>
-            <div class="cell" onclick="handleMove(5)"></div>
-            <div class="cell" onclick="handleMove(6)"></div>
-            <div class="cell" onclick="handleMove(7)"></div>
-            <div class="cell" onclick="handleMove(8)"></div>
+        <div id="messages" class="h-48 overflow-y-auto mb-4 flex flex-col gap-2 p-2"></div>
+
+        <div class="flex gap-2 mb-8">
+            <input type="text" id="msg-input" placeholder="כתוב הודעה..." class="flex-1 p-3 rounded-xl bg-slate-900 border border-slate-700 outline-none">
+            <button onclick="sendMessage()" class="px-5 bg-indigo-600 rounded-xl font-bold hover:bg-indigo-500 transition-all">שלח</button>
         </div>
-        <p id="turn-display">תור השחקן: X</p>
+
+        <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(0)"></div>
+            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(1)"></div>
+            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(2)"></div>
+            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(3)"></div>
+            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(4)"></div>
+            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(5)"></div>
+            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(6)"></div>
+            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(7)"></div>
+            <div class="cell aspect-square rounded-xl flex items-center justify-center text-4xl font-black cursor-pointer shadow-inner" onclick="handleMove(8)"></div>
+        </div>
+        <p id="turn-display" class="text-center font-bold text-indigo-400 text-lg uppercase">תור השחקן: X</p>
     </div>
 
     <script>
@@ -107,10 +66,16 @@
 
         async function startSearch() {
             myName = document.getElementById('username').value;
-            if(!myName) return alert("בחר שם משתמש");
+            if(!myName) return alert("הכנס שם!");
             
+            document.getElementById('login').innerHTML = `
+                <div class="flex flex-col items-center py-10">
+                    <div class="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <h3 class="text-xl font-bold">מחפש מישהו לדבר איתו...</h3>
+                    <p class="text-slate-400 text-sm mt-2 text-center text-balance italic px-4">"הדברים הכי טובים קורים כשלא מצפים להם"</p>
+                </div>`;
+
             await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: myName}) });
-            document.getElementById('login').innerHTML = "<h3 style='text-align:center;'>מחפש שותף לשיחה...</h3><p>זה עשוי לקחת כמה שניות</p>";
 
             const interval = setInterval(async () => {
                 const res = await fetch(`/api/match/${myName}`);
@@ -120,7 +85,6 @@
                     document.getElementById('partner-name').innerText = data.partner;
                     document.getElementById('login').classList.add('hidden');
                     document.getElementById('chat-container').classList.remove('hidden');
-                    // קביעת מי X ומי O לפי סדר השמות בחדר
                     if(currentRoom.startsWith(`room_${data.partner}`)) myChar = "O";
                     clearInterval(interval);
                     startPolling();
@@ -137,14 +101,17 @@
                 const msgs = await mRes.json();
                 const gData = await gRes.json();
 
-                // עדכון הודעות
                 const msgDiv = document.getElementById('messages');
                 msgDiv.innerHTML = msgs.map(m => `
-                    <div class="msg ${m.user === myName ? 'me' : ''}">${m.text}</div>
+                    <div class="flex ${m.user === myName ? 'justify-start' : 'justify-end'}">
+                        <div class="max-w-[80%] px-4 py-2 rounded-2xl ${m.user === myName ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-700 text-slate-200 rounded-tl-none'}">
+                            <p class="text-[10px] opacity-50 mb-1">${m.user}</p>
+                            <p class="text-sm">${m.text}</p>
+                        </div>
+                    </div>
                 `).join('');
                 msgDiv.scrollTop = msgDiv.scrollHeight;
 
-                // עדכון לוח משחק
                 currentBoard = gData.board;
                 document.getElementById('turn-display').innerText = "תור השחקן: " + gData.turn;
                 
