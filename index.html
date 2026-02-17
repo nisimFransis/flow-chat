@@ -2,32 +2,40 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Flow Chat & Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow | Chat & Game</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; }
-        #login, #chat-container { width: 90%; max-width: 400px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-top: 20px; }
+        :root { --primary: #6366f1; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; margin: 0; min-height: 100vh; }
+        #login, #chat-container { width: 90%; max-width: 400px; background: var(--card); padding: 25px; border-radius: 15px; margin-top: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; margin-bottom: 15px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border-radius: 8px; border: none; background: var(--primary); color: white; font-weight: bold; cursor: pointer; }
+        #messages { height: 200px; overflow-y: auto; background: #0f172a; border-radius: 8px; padding: 10px; margin: 15px 0; display: flex; flex-direction: column; gap: 5px; }
+        .msg { padding: 8px 12px; border-radius: 10px; background: #334155; width: fit-content; max-width: 80%; }
+        .msg.me { align-self: flex-end; background: var(--primary); }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 20px; }
+        .cell { aspect-ratio: 1; background: #334155; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; cursor: pointer; }
         .hidden { display: none; }
-        #messages { height: 200px; overflow-y: auto; border: 1px solid #ddd; margin: 10px 0; padding: 5px; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 20px; }
-        .cell { width: 100px; height: 100px; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-size: 2em; cursor: pointer; background: #fff; }
-        #status { color: blue; font-weight: bold; }
+        #turn-display { text-align: center; color: var(--primary); font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
 
     <div id="login">
-        <h2>ברוכים הבאים ל-Flow</h2>
+        <h1 style="text-align:center;">Flow.</h1>
         <input type="text" id="username" placeholder="הכנס שם משתמש...">
         <button onclick="startSearch()">חפש צ'אט</button>
     </div>
 
     <div id="chat-container" class="hidden">
-        <div id="status">מחובר אל: <span id="partner-name"></span></div>
+        <div id="status">💬 שותף: <span id="partner-name"></span></div>
         <div id="messages"></div>
-        <input type="text" id="msg-input" placeholder="כתוב הודעה...">
-        <button onclick="sendMessage()">שלח</button>
+        <div style="display:flex; gap:5px;">
+            <input type="text" id="msg-input" placeholder="הודעה..." style="margin:0;">
+            <button onclick="sendMessage()" style="width:70px;">שלח</button>
+        </div>
 
-        <div class="grid" id="board">
+        <div class="grid">
             <div class="cell" onclick="handleMove(0)"></div>
             <div class="cell" onclick="handleMove(1)"></div>
             <div class="cell" onclick="handleMove(2)"></div>
@@ -42,17 +50,14 @@
     </div>
 
     <script>
-        let myName = "";
-        let currentRoom = null;
-        let currentBoard = ".........";
-        let myChar = "X"; // הראשון בחדר הוא X
+        let myName = "", currentRoom = null, myChar = "X", currentBoard = ".........";
 
         async function startSearch() {
             myName = document.getElementById('username').value;
-            if(!myName) return alert("בחר שם");
+            if(!myName) return alert("הכנס שם!");
             
             await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: myName}) });
-            document.getElementById('login').innerHTML = "מחפש התאמה...";
+            document.getElementById('login').innerHTML = "<h3 style='text-align:center;'>מחפש שותף...</h3>";
 
             const interval = setInterval(async () => {
                 const res = await fetch(`/api/match/${myName}`);
@@ -62,8 +67,7 @@
                     document.getElementById('partner-name').innerText = data.partner;
                     document.getElementById('login').classList.add('hidden');
                     document.getElementById('chat-container').classList.remove('hidden');
-                    // אם אני ה-u2 בחדר (השני שנכנס), אני O
-                    if(data.room_id.startsWith(`room_${data.partner}`)) myChar = "O";
+                    if(currentRoom.startsWith(`room_${data.partner}`)) myChar = "O";
                     clearInterval(interval);
                     startPolling();
                 }
@@ -72,52 +76,51 @@
 
         function startPolling() {
             setInterval(async () => {
-                // משיכת הודעות
-                const mRes = await fetch(`/api/chat/${currentRoom}`);
+                const [mRes, gRes] = await Promise.all([
+                    fetch(`/api/chat/${currentRoom}`),
+                    fetch(`/api/game/${currentRoom}`)
+                ]);
                 const msgs = await mRes.json();
-                document.getElementById('messages').innerHTML = msgs.map(m => `<div><b>${m.user}:</b> ${m.text}</div>`).join('');
-                
-                // משיכת מצב לוח
-                const gRes = await fetch(`/api/game/${currentRoom}`);
                 const gData = await gRes.json();
+
+                document.getElementById('messages').innerHTML = msgs.map(m => `
+                    <div class="msg ${m.user === myName ? 'me' : ''}">${m.text}</div>
+                `).join('');
+
                 currentBoard = gData.board;
                 document.getElementById('turn-display').innerText = "תור: " + gData.turn;
-                updateUI();
+                
+                const cells = document.querySelectorAll('.cell');
+                currentBoard.split('').forEach((c, i) => {
+                    cells[i].innerText = c === '.' ? '' : c;
+                    cells[i].style.color = c === 'X' ? '#6366f1' : '#f43f5e';
+                });
             }, 1000);
-        }
-
-        function updateUI() {
-            const cells = document.querySelectorAll('.cell');
-            currentBoard.split('').forEach((c, i) => {
-                cells[i].innerText = c === '.' ? '' : c;
-            });
         }
 
         async function handleMove(i) {
             const gRes = await fetch(`/api/game/${currentRoom}`);
             const gData = await gRes.json();
-            
             if(gData.turn !== myChar || currentBoard[i] !== '.') return;
 
             let arr = currentBoard.split('');
             arr[i] = myChar;
-            const newBoard = arr.join('');
-
             await fetch(`/api/game/${currentRoom}/move`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ board: newBoard, char: myChar })
+                body: JSON.stringify({ board: arr.join(''), char: myChar })
             });
         }
 
         async function sendMessage() {
-            const text = document.getElementById('msg-input').value;
+            const input = document.getElementById('msg-input');
+            if(!input.value) return;
             await fetch(`/api/chat/${currentRoom}`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ user: myName, text: text })
+                body: JSON.stringify({ user: myName, text: input.value })
             });
-            document.getElementById('msg-input').value = "";
+            input.value = "";
         }
     </script>
 </body>
